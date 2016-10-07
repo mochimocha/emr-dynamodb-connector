@@ -46,9 +46,9 @@
 
     <modules>
         <module>emr-dynamodb-hadoop</module>
-        <module>emr-dynamodb-hive</module>
+        <!--module>emr-dynamodb-hive</module-->
         <module>emr-dynamodb-tools</module>
-        <module>shims</module>
+        <!--module>shims</module-->
     </modules>
 
     <url>https://github.com/awslabs/emr-dynamodb-connector</url>
@@ -149,6 +149,53 @@
                     <autoReleaseAfterClose>false</autoReleaseAfterClose>
                 </configuration>
             </plugin>
+            <plugin>
+         <!-- Place all output jars into the /jars folder for Brazil build -->
+         <groupId>org.apache.maven.plugins</groupId>
+         <artifactId>maven-dependency-plugin</artifactId>
+         <executions>
+           <execution>
+             <id>copy-artifact</id>
+             <phase>package</phase>
+             <goals>
+               <goal>copy</goal>
+             </goals>
+             <configuration>
+               <artifactItems>
+                 <artifactItem>
+                   <groupId>${project.groupId}</groupId>
+                   <artifactId>emr-dynamodb-hadoop</artifactId>
+                   <version>${project.version}</version>
+                   <type>${project.packaging}</type>
+                 </artifactItem>
+                 <artifactItem>
+                   <groupId>${project.groupId}</groupId>
+                   <artifactId>emr-dynamodb-tools</artifactId>
+                   <version>${project.version}</version>
+                   <type>${project.packaging}</type>
+                 </artifactItem>
+               </artifactItems>
+               <outputDirectory>../jars</outputDirectory>
+             </configuration>
+           </execution>
+         </executions>
+       </plugin>
+       <!-- Delete copied jars for Brazil -->
+       <plugin>
+         <artifactId>maven-clean-plugin</artifactId>
+         <version>3.0.0</version>
+         <configuration>
+           <filesets>
+             <fileset>
+               <directory>jars</directory>
+               <includes>
+                 <include>**/*.jar</include>
+               </includes>
+               <followSymlinks>false</followSymlinks>
+             </fileset>
+           </filesets>
+         </configuration>
+       </plugin>
         </plugins>
     </build>
 

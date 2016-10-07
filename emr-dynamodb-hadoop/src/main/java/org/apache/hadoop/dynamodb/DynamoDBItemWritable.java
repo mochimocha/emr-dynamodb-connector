@@ -42,14 +42,25 @@ public class DynamoDBItemWritable implements Writable {
   // to disk, including for backups in S3. At least the read method needs to
   // be backwards compatible - if it's not, move marshalling into the export
   // format itself and make sure that's backward compatible.
+  // Changed to read byte string instead of readUTF to accommodate strings
+  // longer than 65536 bytes
   @Override
   public void readFields(DataInput in) throws IOException {
-    readFieldsStream(in.readUTF());
+    int length = in.readInt();
+    byte[] data = new byte[length];
+    in.readFully(data);
+    String str = new String(data,"UTF-8");
+    readFieldsStream(str);
   }
 
+  // Changed to write byte string instead of writeUTF to accommodate strings
+  // longer than 65536 bytes
   @Override
   public void write(DataOutput out) throws IOException {
-    out.writeUTF(writeStream());
+    String str = this.writeStream();
+    byte[] data = str.getBytes("UTF-8");
+    out.writeInt(data.length);
+    out.write(data);
   }
 
   public void readFieldsStream(String string) {

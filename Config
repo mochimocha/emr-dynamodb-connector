@@ -1,0 +1,53 @@
+# -*-perl-*-
+package.NovitasEmrDdb = {
+     interfaces = (1.0);
+
+     deploy = {
+         generic = true;
+     };
+
+     dependencies = {
+       1.0 = {
+         Hadoop2-common = 2.7.1;
+         Hadoop2-mapreduce = 2.7.1;
+         AWSDynamoDBMidlevel = external_release_1.10;
+       }
+     }
+
+     build-system = happytrails;
+
+     build-environment = {
+         chroot = basic;
+         network-access = blocked;
+     };
+
+     build-tools = {
+       1.0 = {
+         JDK8 = 1.0;
+         HappierTrails = 3.3;
+         BrazilPath = 1.1;
+         JarJar = 1.4;
+       };
+     };
+
+    resolves-conflict-dependencies = {
+         1.0 = {
+             JakartaCommons-codec = 1.4;
+             Apache-HttpComponents-HttpClient = 4.3.6;
+         };
+     };
+
+    remove-dependencies = {
+         1.0 = {
+             JDK = *;
+         };
+     };
+
+     # For more information on how to declare targets for HappyTrails packages
+     # see: https://w.amazon.com/?BrazilBuildSystem/HappyTrails/GettingStarted
+     targets = {
+         NovitasEmrDdb-1.0 = {
+             type = javalibrary;
+         }
+     };
+ };

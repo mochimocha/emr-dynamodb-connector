@@ -1,0 +1,127 @@
+<?xml version="1.0"?>
+
+ <project name="NovitasEmrDdb-1.0" basedir="." default="release" xmlns:ht="happytrails">
+
+   <!-- This is provided solely so that this package will build
+        out-of-the-box.  Feel free to remove this as soon as you add actual
+        content under the src/ and tst/ directories. -->
+   <property name="allow.empty.sources.dir" value="true" />
+   <property name="checkstyle.failOnError" value="false"/>
+   <property name="findbugs.failOnError" value="false"/>
+
+   <!-- Override this property on the command line using -D flag to point it to your Maven installation -->
+   <property name="maven" value="/opt/apache-maven-3.3.9/bin/mvn"/>
+
+   <import file="${happytrails.root}/happytrails.xml"/>
+
+   <!-- Define HappierTrails property overrides here -->
+   <property name="tests.additional.jvmargs" value=""/>
+
+   <ht:import file="happier-trails.xml"/>
+
+   <!-- Extract all class files from jars produced by Maven from the Parquet projects -->
+   <target name="deflate-parquet-jars">
+     <unzip dest="${classes.dir}">
+       <fileset dir="${basedir}/jars">
+         <include name="**/*.jar" />
+       </fileset>
+     </unzip>
+   </target>
+
+   <!-- Validates that the sources can be built with dependencies defined in this package. This is
+        a test to ensure that dependencies that are defined in Brazil are, at least, sufficient
+        to compile the code that results in imported jars. This is just a safety check and doesn't
+        guarantee proper execution at run-time since dependencies may be resolved to different
+        versions or removed by downstream packages -->
+   <target name="validate-dependencies">
+     <echo message="Building with Maven..."/>
+     <exec executable="${maven}" failonerror="true">
+       <env key="JAVA_HOME" path="${env.JAVA_HOME}"/>
+       <arg value="install"/>
+     </exec>
+     <property name="temp.sources" location="${output.dir}/private/temp/sources"/>
+     <property name="temp.classes" location="${output.dir}/private/temp/classes"/>
+     <echo message="Copying source files (except tests)..."/>
+     <mkdir dir="${temp.sources}"/>
+     <for list="emr-dynamodb-hadoop;emr-dynamodb-tools" delimiter=";" param="dynamodb.module">
+       <sequential>
+         <echo message="Copying module @{dynamodb.module}"/>
+         <!-- Module core files -->
+         <copy todir="${temp.sources}">
+           <fileset dir="${basedir}/@{dynamodb.module}/src/main" includes="**/*.java"/>
+         </copy>
+         <!-- Module generated source files, if any. These are produced by parquet-generator -->
+         <if>
+           <available file="${basedir}/@{dynamodb.module}/target/generated-src" type="dir"/>
+           <then>
+             <copy todir="${temp.sources}">
+               <fileset dir="${basedir}/@{dynamodb.module}/target/generated-src" includes="**/*.java"/>
+             </copy>
+           </then>
+         </if>
+       </sequential>
+     </for>
+     <echo message="Compiling collected sources from submodules..."/>
+     <property name="sources.javac.extra.args" value=""/>
+     <mkdir dir="${temp.classes}"/>
+     <javac srcdir="${temp.sources}" destdir="${temp.classes}"
+            source="${source.java.vm.version}" target="${target.java.vm.version}"
+            encoding="${sources.encoding}" bootclasspath="${java.vm.bootclasspath}"
+            debug="true">
+       <compilerarg line="${sources.javac.extra.args}"/>
+       <classpath>
+         <path path="${standard.compile.classpath}" />
+       </classpath>
+     </javac>
+   </target>
+
+   <exec executable="hostname" outputproperty="machine" failonerror="true"/>
+
+   <!-- Only verify dependencies if run on Mac, Windows or a developer machine
+        because build servers don't have Maven installed -->
+   <target name="verify-on-mac-or-windows">
+     <if>
+       <or>
+         <and>
+           <os family="unix"/>
+           <!-- If the hostname contains either the word desktop of dev-dsk in its name -->
+           <matches pattern="(dev-dsk)|(desktop)" string="${machine}"/>
+         </and>
+         <os family="windows"/>
+         <os family="mac"/>
+       </or>
+       <then>
+         <antcall target="validate-dependencies"/>
+       </then>
+     </if>
+   </target>
+
+   <!-- Warns the user if there are uncommitted files in the repository -->
+   <target name="warn-uncommitted-jars">
+     <if>
+       <!-- Only do this on Linux based systems because bash may not be available on Windows -->
+       <os family="unix"/>
+       <then>
+         <exec executable="bash" outputproperty="changed.files.in.git">
+           <arg value="-c"/>
+           <arg value="expr $(git status --porcelain 2>/dev/null| grep 'M' | wc -l)"/>
+         </exec>
+         <if>
+           <not>
+             <equals arg1="${changed.files.in.git}" arg2="0"/>
+           </not>
+           <then>
+             <echo message="========================================================================================"/>
+             <echo message="============ You have uncommitted changes; please remember to commit them =============="/>
+             <echo message="========================================================================================"/>
+           </then>
+           </if>
+       </then>
+     </if>
+   </target>
+
+   <target name="ht-pre-build" depends="verify-on-mac-or-windows"/>
+   <target name="ht-pre-compile" depends="deflate-parquet-jars"/>
+   <target name="ht-post-release" depends="warn-uncommitted-jars"/>
+
+ </project>
